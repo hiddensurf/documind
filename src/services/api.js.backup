@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 180000,
+  timeout: 60000,
 });
 
 // Helper function to transform snake_case to camelCase
@@ -107,6 +107,7 @@ export const sendMessage = async (conversationId, query, documentIds = []) => {
   return transformed;
 };
 
+// ADDED: Alias for backward compatibility
 export const sendChatMessage = sendMessage;
 
 export const generateMindMap = async (conversationId, query, documentIds = []) => {
@@ -121,16 +122,19 @@ export const generateMindMap = async (conversationId, query, documentIds = []) =
   return transformed;
 };
 
+export default api;
 export const runAdvancedAnalysis = async (conversationId, query, documentIds = []) => {
-  console.log('API: Running advanced CAD analysis for conversation:', conversationId);
   const response = await api.post(`/conversations/${conversationId}/advanced-analysis`, {
     query,
     document_ids: documentIds
   });
-  
-  const transformed = transformResponse(response.data);
-  console.log('API: Advanced analysis response:', transformed);
-  return transformed;
+  return transformResponse(response.data);
 };
 
-export default api;
+export const runAdvancedAnalysis = async (conversationId, query, documentIds = []) => {
+  const response = await api.post(`/conversations/${conversationId}/advanced-analysis`, {
+    query,
+    document_ids: documentIds
+  });
+  return transformResponse(response.data);
+};

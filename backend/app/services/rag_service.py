@@ -76,10 +76,11 @@ class RAGService:
                 api_key=self.settings.GOOGLE_API_KEY
             )
             
+            # Use higher temperature for more natural responses
             self.llm = Gemini(
                 model_name=self.settings.LLM_MODEL,
                 api_key=self.settings.GOOGLE_API_KEY,
-                temperature=0.7
+                temperature=0.8  # Increased for more engaging responses
             )
             
             Settings.embed_model = self.embed_model
@@ -171,58 +172,74 @@ class RAGService:
             logger.info(f"Querying: {query_text}")
             logger.info(f"Document IDs for filtering: {doc_ids}")
             
-            # Create index from vector store
             index = VectorStoreIndex.from_vector_store(
                 vector_store=self.vector_store
             )
             
             should_mindmap = return_mindmap or self._should_generate_mindmap(query_text)
             
-            # Build query engine WITHOUT filters (filters causing issues)
+            # Build query engine - simplified without filtering
             query_engine = index.as_query_engine(
                 similarity_top_k=self.settings.TOP_K,
-                response_mode="compact"
+                response_mode="tree_summarize"
             )
             
             logger.info(f"Query engine created with TOP_K={self.settings.TOP_K}")
             
             if should_mindmap:
-                mindmap_query = f"""Create a Mermaid.js mind map diagram about: {query_text}
+                mindmap_query = f"""Based on the document content, create a clear mind map about: {query_text}
 
-IMPORTANT FORMATTING RULES:
-1. Use ONLY simple node labels without special characters
-2. Use single quotes for labels, never double quotes
-3. Keep labels short (max 4-5 words)
-4. Use simple arrows: -->
-5. Start with 'graph TD'
+RESPONSE FORMAT (STRICT):
+First, write 2-3 sentences explaining the topic naturally.
 
-Format your response EXACTLY like this:
+Then write exactly: MERMAID_START
+Then write the mermaid code starting with: graph TD
+Then write exactly: MERMAID_END
 
-[2-3 sentence explanation]
+MERMAID RULES:
+- Use simple labels (3-5 words max)
+- Use single quotes only
+- No special characters in labels
+- Use clear hierarchy
+- Maximum 10 nodes
+
+Example:
+The UAV project focuses on detecting corrosion using advanced sensors.
 
 MERMAID_START
 graph TD
-    A[Main Topic] --> B[Subtopic 1]
-    A --> C[Subtopic 2]
-    B --> D[Detail 1]
-    C --> E[Detail 2]
+    A[UAV System] --> B[Hardware]
+    A --> C[Software]
+    B --> D[ZED2 Camera]
+    B --> E[LiDAR]
+    C --> F[AI Processing]
 MERMAID_END
-
-Base the diagram ONLY on the provided context."""
+"""
                 response = query_engine.query(mindmap_query)
             else:
-                # Simple, direct prompt
-                full_query = f"""Based on the context provided, answer this question:
-
-{query_text}
-
-Provide a clear, detailed answer using only the information in the context."""
                 
-                logger.info(f"Sending query to LLM: {full_query[:100]}...")
+                # IMPROVED PROMPT FOR CONCISE RESPONSES
+                full_query = f"""Answer this question directly and concisely based on the document data provided.
+
+Question: {query_text}
+
+INSTRUCTIONS:
+- Give a direct, focused answer (2-4 sentences for simple questions)
+- For CAD drawings, be specific about what you see in the data
+- If asking about visual elements, use the visual analysis data
+- If asking about text/dimensions, cite specific entities
+- Don't explain what you CAN'T see - focus on what IS in the data
+- Be technical but clear
+- If the data doesn't contain the answer, say so briefly
+
+IMPORTANT: Base your answer ONLY on the document data provided. Be concise and specific."""
+                
+                
+                logger.info(f"Sending query to LLM...")
                 response = query_engine.query(full_query)
             
             response_text = str(response)
-            logger.info(f"Raw response from LLM (first 200 chars): {response_text[:200]}")
+            logger.info(f"Raw response length: {len(response_text)}")
             
             mermaid_code = self._clean_mermaid_code(response_text)
             
@@ -233,9 +250,6 @@ Provide a clear, detailed answer using only the information in the context."""
             sources = []
             if hasattr(response, 'source_nodes'):
                 logger.info(f"Retrieved {len(response.source_nodes)} source nodes")
-                for node in response.source_nodes:
-                    logger.info(f"Source node metadata: {node.metadata}")
-                    logger.info(f"Source node text preview: {node.text[:100]}...")
                 sources = [
                     node.metadata.get('file_name', 'Unknown')
                     for node in response.source_nodes
@@ -243,10 +257,10 @@ Provide a clear, detailed answer using only the information in the context."""
             
             logger.info(f"Query completed. Response length: {len(response_text)}, Has mindmap: {mermaid_code is not None}")
             
-            # If response is too short, it might be an error
-            if len(response_text) < 20 and not mermaid_code:
-                logger.warning(f"Response too short ({len(response_text)} chars): {response_text}")
-                response_text = "I apologize, but I couldn't generate a proper response. This might be due to API quota limits or the query not matching the document content. Please try rephrasing your question."
+            # Check for too-short responses
+            if len(response_text) < 50 and not mermaid_code:
+                logger.warning(f"Response too short ({len(response_text)} chars)")
+                response_text = "I apologize, but I'm having trouble generating a proper response. This could be due to API limitations or the query not matching the document content well. Could you try rephrasing your question or asking something more specific about the document?"
             
             return {
                 "response": response_text,
@@ -259,9 +273,15 @@ Provide a clear, detailed answer using only the information in the context."""
             logger.error(f"Error querying RAG system: {str(e)}")
             logger.exception("Full traceback:")
             
-            # Return a friendly error message
+            # Better error messages
+            error_msg = str(e)
+            if "500" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                response_text = "⚠️ I've hit the API rate limit. Please wait a minute and try again. If this persists, you may need to check your Gemini API quota at https://aistudio.google.com/app/apikey"
+            else:
+                response_text = f"I encountered an error: {error_msg}. Please try again with a different question."
+            
             return {
-                "response": f"I encountered an error processing your query: {str(e)}. Please try again or rephrase your question.",
+                "response": response_text,
                 "has_mindmap": False,
                 "mermaid_code": None,
                 "sources": []
@@ -272,7 +292,7 @@ Provide a clear, detailed answer using only the information in the context."""
         mindmap_keywords = [
             'mind map', 'mindmap', 'diagram', 'structure', 
             'visualize', 'visualization', 'chart', 'graph',
-            'relationship', 'overview', 'summary diagram', 'flow'
+            'relationship', 'overview', 'flow', 'map out'
         ]
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in mindmap_keywords)
@@ -280,8 +300,11 @@ Provide a clear, detailed answer using only the information in the context."""
     def delete_document(self, doc_id: str) -> bool:
         """Delete document from vector store"""
         try:
-            logger.info(f"Deleting document: {doc_id}")
-            self.pinecone_index.delete(filter={"doc_id": {"$eq": doc_id}})
+            logger.info(f"Deleting document from Pinecone: {doc_id}")
+            
+            # Delete all vectors with this doc_id
+            self.pinecone_index.delete(filter={"doc_id": doc_id})
+            
             logger.info(f"Successfully deleted document: {doc_id}")
             return True
         except Exception as e:

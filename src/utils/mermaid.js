@@ -5,6 +5,7 @@ export const initializeMermaid = () => {
     startOnLoad: false,
     theme: 'dark',
     securityLevel: 'loose',
+    logLevel: 'debug',
     themeVariables: {
       primaryColor: '#a855f7',
       primaryTextColor: '#fff',
@@ -30,59 +31,77 @@ export const initializeMermaid = () => {
   });
 };
 
-export const renderMermaid = async (element) => {
+export const renderMermaid = async (element, code) => {
   try {
+    console.log('Starting Mermaid render...');
+    console.log('Code to render:', code);
+    
     // Clear previous content
     element.innerHTML = '';
     
-    // Get the mermaid code
-    let mermaidCode = element.textContent || element.innerText;
-    
     // Clean up the code
-    mermaidCode = mermaidCode.trim();
+    let cleanCode = code.trim();
     
     // Remove markdown code blocks if present
-    mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '');
+    cleanCode = cleanCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '');
+    cleanCode = cleanCode.trim();
     
-    // Ensure it starts with a graph type
-    if (!mermaidCode.match(/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie)/)) {
-      mermaidCode = 'graph TD\n' + mermaidCode;
+    console.log('Cleaned code:', cleanCode);
+    
+    // Validate it starts with a graph type
+    const validStarts = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie'];
+    const hasValidStart = validStarts.some(start => cleanCode.startsWith(start));
+    
+    if (!hasValidStart) {
+      console.log('Adding graph TD prefix');
+      cleanCode = 'graph TD\n' + cleanCode;
     }
     
-    console.log('Rendering Mermaid code:', mermaidCode);
+    // Create a unique ID
+    const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('Using ID:', id);
     
-    // Create a unique ID for this diagram
-    const id = `mermaid-${Date.now()}`;
+    // Render using mermaid.render
+    const { svg } = await mermaid.render(id, cleanCode);
     
-    // Render the diagram
-    const { svg } = await mermaid.render(id, mermaidCode);
-    
-    // Insert the SVG
+    console.log('Render successful, inserting SVG');
     element.innerHTML = svg;
     
-    console.log('Mermaid diagram rendered successfully');
+    return true;
   } catch (error) {
     console.error('Mermaid rendering error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      str: error.str,
+      hash: error.hash
+    });
+    
+    // Show detailed error
     element.innerHTML = `
-      <div class="p-6 text-center">
+      <div class="p-6 text-center space-y-4">
         <div class="text-red-500 mb-2">
           <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
-        <p class="text-red-500 font-semibold mb-1">Error Rendering Diagram</p>
+        <p class="text-red-500 font-semibold">Failed to Render Diagram</p>
         <p class="text-sm text-gray-500 dark:text-gray-400">${error.message}</p>
         <details class="mt-4 text-left">
-          <summary class="cursor-pointer text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-            View diagram code
+          <summary class="cursor-pointer text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mb-2">
+            View Diagram Code
           </summary>
-          <pre class="mt-2 p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-60">
-${element.textContent}
-          </pre>
+          <pre class="mt-2 p-4 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-60 text-left">${code}</pre>
         </details>
+        <button 
+          onclick="navigator.clipboard.writeText(\`${code.replace(/`/g, '\\`')}\`)" 
+          class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm"
+        >
+          Copy Code to Clipboard
+        </button>
       </div>
     `;
-    throw error;
+    
+    return false;
   }
 };
 

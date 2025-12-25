@@ -18,7 +18,7 @@ const DocumentUpload = ({ onFilesSelected, uploadProgress }) => {
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.docx,.txt,.md"
+        accept=".pdf,.docx,.txt,.md,.dwg,.dxf,.stl"
         onChange={handleFileChange}
         className="hidden"
       />

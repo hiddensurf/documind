@@ -62,3 +62,43 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* Mermaid container styles */
+.mermaid-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 400px;
+}
+
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Ensure mermaid diagrams are visible */
+.mermaid-container .node rect,
+.mermaid-container .node circle,
+.mermaid-container .node ellipse,
+.mermaid-container .node polygon {
+  fill: #2a2a2a !important;
+  stroke: #7c3aed !important;
+  stroke-width: 2px !important;
+}
+
+.mermaid-container .node .label {
+  color: #fff !important;
+  fill: #fff !important;
+}
+
+.mermaid-container .edgeLabel {
+  background-color: #2a2a2a !important;
+  color: #fff !important;
+}
+
+.mermaid-container .edgePath .path {
+  stroke: #c084fc !important;
+  stroke-width: 2px !important;
+}

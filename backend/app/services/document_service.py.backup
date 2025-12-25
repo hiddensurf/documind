@@ -14,20 +14,13 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 class DocumentService:
-    """Service for document management with advanced CAD support"""
+    """Service for document management"""
     
     def __init__(self):
         self.upload_dir = Path(settings.UPLOAD_DIR)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_file = self.upload_dir / "documents_metadata.json"
         self.documents = self._load_metadata()
-        
-        # Create CAD directories
-        self.cad_manifest_dir = Path("cad_manifests")
-        self.cad_render_dir = Path("cad_renders")
-        self.cad_manifest_dir.mkdir(exist_ok=True)
-        self.cad_render_dir.mkdir(exist_ok=True)
-        
         logger.info(f"DocumentService initialized. Upload dir: {self.upload_dir}")
     
     def _load_metadata(self) -> dict:
@@ -52,13 +45,8 @@ class DocumentService:
         except Exception as e:
             logger.error(f"Error saving metadata: {e}")
     
-    def _is_cad_file(self, filename: str) -> bool:
-        """Check if file is a CAD file"""
-        ext = Path(filename).suffix.lower()
-        return ext in ['.dxf', '.dwg']
-    
     async def upload_document(self, file, filename: str) -> dict:
-        """Upload and process document with advanced CAD analysis"""
+        """Upload and process document"""
         file_path = None
         try:
             from app.services.rag_service import get_rag_service
@@ -81,13 +69,7 @@ class DocumentService:
             file_size = os.path.getsize(file_path)
             logger.info(f"File saved. Size: {file_size} bytes")
             
-            # Check if CAD file
-            is_cad = self._is_cad_file(filename)
-            
-            if is_cad:
-                logger.info("🔧 CAD file detected - using ADVANCED analysis pipeline")
-            
-            # Load document (will use advanced CAD loader if CAD file)
+            # Load document
             logger.info("Loading document...")
             documents = document_loader.load_document(str(file_path), doc_id, filename)
             logger.info(f"Loaded {len(documents)} document(s)")
@@ -105,30 +87,8 @@ class DocumentService:
                 "size": file_size,
                 "upload_date": datetime.now().isoformat(),
                 "file_path": str(file_path),
-                "status": "processed",
-                "is_cad": is_cad
+                "status": "processed"
             }
-            
-            # Add CAD-specific metadata if applicable
-            if is_cad:
-                manifest_path = self.cad_manifest_dir / f"{doc_id}_manifest.json"
-                analysis_path = self.cad_manifest_dir / f"{doc_id}_analysis.json"
-                svg_path = self.cad_render_dir / f"{doc_id}_render.svg"
-                
-                if manifest_path.exists():
-                    doc_metadata["cad_manifest"] = str(manifest_path)
-                if analysis_path.exists():
-                    doc_metadata["cad_analysis"] = str(analysis_path)
-                    # Load analysis summary for quick access
-                    try:
-                        with open(analysis_path, 'r') as f:
-                            analysis_data = json.load(f)
-                            if 'summary' in analysis_data:
-                                doc_metadata["analysis_summary"] = analysis_data['summary'].get('executive_summary', '')[:500]
-                    except:
-                        pass
-                if svg_path.exists():
-                    doc_metadata["cad_render"] = str(svg_path)
             
             self.documents[doc_id] = doc_metadata
             self._save_metadata()
@@ -157,48 +117,8 @@ class DocumentService:
         """Get single document"""
         return self.documents.get(doc_id)
     
-    def get_cad_manifest(self, doc_id: str) -> dict:
-        """Get CAD manifest for a document"""
-        if doc_id not in self.documents:
-            return None
-        
-        doc = self.documents[doc_id]
-        if not doc.get('is_cad', False):
-            return None
-        
-        manifest_path = self.cad_manifest_dir / f"{doc_id}_manifest.json"
-        if not manifest_path.exists():
-            return None
-        
-        try:
-            with open(manifest_path, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading CAD manifest: {e}")
-            return None
-    
-    def get_cad_analysis(self, doc_id: str) -> dict:
-        """Get advanced CAD analysis for a document"""
-        if doc_id not in self.documents:
-            return None
-        
-        doc = self.documents[doc_id]
-        if not doc.get('is_cad', False):
-            return None
-        
-        analysis_path = self.cad_manifest_dir / f"{doc_id}_analysis.json"
-        if not analysis_path.exists():
-            return None
-        
-        try:
-            with open(analysis_path, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading CAD analysis: {e}")
-            return None
-    
     def delete_document(self, doc_id: str) -> bool:
-        """Delete document and all associated files"""
+        """Delete document"""
         try:
             from app.services.rag_service import get_rag_service
             
@@ -222,32 +142,6 @@ class DocumentService:
                 logger.info(f"Deleted file: {file_path}")
             else:
                 logger.warning(f"File not found: {file_path}")
-            
-            # Delete CAD-specific files if they exist
-            if doc.get('is_cad', False):
-                # Delete manifest
-                manifest_path = self.cad_manifest_dir / f"{doc_id}_manifest.json"
-                if manifest_path.exists():
-                    os.remove(manifest_path)
-                    logger.info(f"Deleted CAD manifest: {manifest_path}")
-                
-                # Delete analysis
-                analysis_path = self.cad_manifest_dir / f"{doc_id}_analysis.json"
-                if analysis_path.exists():
-                    os.remove(analysis_path)
-                    logger.info(f"Deleted CAD analysis: {analysis_path}")
-                
-                # Delete SVG render
-                svg_path = self.cad_render_dir / f"{doc_id}_render.svg"
-                if svg_path.exists():
-                    os.remove(svg_path)
-                    logger.info(f"Deleted CAD render: {svg_path}")
-                
-                # Delete PNG analysis image
-                png_path = self.cad_render_dir / f"{doc_id}_analysis.png"
-                if png_path.exists():
-                    os.remove(png_path)
-                    logger.info(f"Deleted CAD PNG: {png_path}")
             
             # Remove from metadata
             del self.documents[doc_id]

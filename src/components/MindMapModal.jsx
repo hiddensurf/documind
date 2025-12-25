@@ -1,62 +1,143 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Brain, X, Download, Copy, Check } from 'lucide-react';
-import { renderMermaid } from '../utils/mermaid';
+import { Brain, X, Download, Copy, Check, AlertCircle } from 'lucide-react';
+import mermaid from 'mermaid';
 
 const MindMapModal = ({ mermaidCode, onClose }) => {
-  const mermaidRef = useRef(null);
+  const containerRef = useRef(null);
   const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [svgContent, setSvgContent] = useState('');
 
   useEffect(() => {
-    if (mermaidCode && mermaidRef.current) {
-      const renderDiagram = async () => {
-        try {
-          setIsRendering(true);
-          setError(null);
-          
-          // Set the text content first
-          mermaidRef.current.textContent = mermaidCode;
-          
-          // Wait a tick for the DOM to update
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Render the diagram
-          await renderMermaid(mermaidRef.current);
-          
-          setIsRendering(false);
-        } catch (err) {
-          console.error('Mermaid rendering error:', err);
-          setError(err.message);
+    let mounted = true;
+
+    const renderDiagram = async () => {
+      if (!mermaidCode) {
+        console.error('MindMapModal - No mermaid code provided');
+        if (mounted) {
+          setError('No diagram code provided');
           setIsRendering(false);
         }
-      };
-      renderDiagram();
-    }
+        return;
+      }
+
+      try {
+        console.log('MindMapModal - Starting render');
+        console.log('MindMapModal - Code:', mermaidCode);
+        
+        setIsRendering(true);
+        setError(null);
+        
+        // Clean the code
+        let cleanCode = mermaidCode.trim();
+        cleanCode = cleanCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Ensure it starts with a graph type
+        if (!cleanCode.startsWith('graph') && !cleanCode.startsWith('flowchart')) {
+          cleanCode = 'graph TD\n' + cleanCode;
+        }
+        
+        console.log('MindMapModal - Clean code:', cleanCode);
+        
+        // Generate unique ID
+        const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Render using mermaid.render
+        console.log('MindMapModal - Calling mermaid.render with ID:', id);
+        const { svg } = await mermaid.render(id, cleanCode);
+        
+        console.log('MindMapModal - Render successful!');
+        
+        if (!mounted) return;
+        
+        setSvgContent(svg);
+        setIsRendering(false);
+        
+      } catch (err) {
+        console.error('MindMapModal - Render error:', err);
+        if (mounted) {
+          setError(err.message || 'Failed to render diagram');
+          setIsRendering(false);
+        }
+      }
+    };
+
+    // Small delay to ensure component is mounted
+    const timer = setTimeout(renderDiagram, 100);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
   }, [mermaidCode]);
 
   const handleDownload = () => {
-    const svg = mermaidRef.current?.querySelector('svg');
+    if (!containerRef.current) return;
+    
+    const svg = containerRef.current.querySelector('svg');
     if (svg) {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgData], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'mindmap.svg';
-      link.click();
-      URL.revokeObjectURL(url);
+      try {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgData], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'mindmap.svg';
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Download failed:', err);
+        alert('Failed to download diagram');
+      }
     }
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(mermaidCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(mermaidCode)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(err => {
+        console.error('Copy failed:', err);
+        alert('Failed to copy code');
+      });
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    setIsRendering(true);
+    setSvgContent('');
+    
+    setTimeout(async () => {
+      try {
+        let cleanCode = mermaidCode.trim();
+        cleanCode = cleanCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        if (!cleanCode.startsWith('graph') && !cleanCode.startsWith('flowchart')) {
+          cleanCode = 'graph TD\n' + cleanCode;
+        }
+        
+        const id = `mermaid-retry-${Date.now()}`;
+        const { svg } = await mermaid.render(id, cleanCode);
+        
+        setSvgContent(svg);
+        setIsRendering(false);
+      } catch (err) {
+        setError(err.message);
+        setIsRendering(false);
+      }
+    }, 100);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-light-bg dark:bg-dark-bg rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl border border-light-border dark:border-dark-border">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
@@ -67,7 +148,7 @@ const MindMapModal = ({ mermaidCode, onClose }) => {
             <div>
               <h3 className="text-lg font-semibold">Mind Map Visualization</h3>
               <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
-                Interactive diagram generated from your documents
+                {isRendering ? 'Rendering diagram...' : error ? 'Render failed' : 'Interactive diagram'}
               </p>
             </div>
           </div>
@@ -89,7 +170,7 @@ const MindMapModal = ({ mermaidCode, onClose }) => {
                 </>
               )}
             </button>
-            {!error && !isRendering && (
+            {!error && !isRendering && svgContent && (
               <button
                 onClick={handleDownload}
                 className="p-2 hover:bg-light-hover dark:hover:bg-dark-hover rounded-xl transition-colors"
@@ -116,29 +197,48 @@ const MindMapModal = ({ mermaidCode, onClose }) => {
                 <p className="text-light-textSecondary dark:text-dark-textSecondary">
                   Rendering mind map...
                 </p>
+                <p className="text-xs text-light-textSecondary dark:text-dark-textSecondary mt-2">
+                  This may take a few seconds
+                </p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center max-w-lg">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Failed to Render Diagram</h3>
+                <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+                  {error}
+                </p>
+                <button
+                  onClick={handleRetry}
+                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  Try Again
+                </button>
               </div>
             </div>
           ) : (
             <div 
-              ref={mermaidRef}
-              className="mermaid flex items-center justify-center min-h-[400px]"
+              ref={containerRef}
+              className="flex items-center justify-center min-h-[400px] mermaid-container"
+              dangerouslySetInnerHTML={{ __html: svgContent }}
             />
           )}
         </div>
 
-        {/* Raw Code Preview (for debugging) */}
-        {error && (
-          <div className="border-t border-light-border dark:border-dark-border p-4 bg-red-500/5">
-            <details>
-              <summary className="cursor-pointer text-sm font-medium mb-2 hover:text-purple-500">
-                View Raw Mermaid Code
-              </summary>
-              <pre className="text-xs bg-dark-bg dark:bg-black p-4 rounded-lg overflow-auto max-h-40 border border-light-border dark:border-dark-border">
-                {mermaidCode}
-              </pre>
-            </details>
-          </div>
-        )}
+        {/* Raw Code Preview */}
+        <div className="border-t border-light-border dark:border-dark-border p-4 bg-light-bg dark:bg-dark-bg">
+          <details>
+            <summary className="cursor-pointer text-sm font-medium hover:text-purple-500 flex items-center gap-2">
+              <Copy className="w-4 h-4" />
+              View Raw Mermaid Code
+            </summary>
+            <pre className="text-xs bg-dark-bg dark:bg-black p-4 rounded-lg overflow-auto max-h-40 border border-light-border dark:border-dark-border mt-2 font-mono text-gray-300">
+              {mermaidCode}
+            </pre>
+          </details>
+        </div>
       </div>
     </div>
   );

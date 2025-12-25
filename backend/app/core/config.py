@@ -1,43 +1,42 @@
+"""
+Application Configuration
+"""
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-import os
-from pathlib import Path
+from typing import List
 
 class Settings(BaseSettings):
-    # API Keys
+    # Google API
     GOOGLE_API_KEY: str
-    PINECONE_API_KEY: str
     
-    # Pinecone Configuration
-    PINECONE_ENVIRONMENT: str = "gcp-starter"
+    # Pinecone
+    PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str = "documind-index"
     
-    # Application Configuration
-    UPLOAD_DIR: str = "./uploads"
-    MAX_UPLOAD_SIZE: int = 10485760  # 10MB
+    # OpenRouter (optional)
+    OPENROUTER_API_KEY: str = ""
     
-    # Model Configuration - Using Gemini 2.5 Pro (separate quota from Flash)
+    # LLM Settings
+    LLM_MODEL: str = "models/gemini-flash-latest"
     EMBEDDING_MODEL: str = "models/text-embedding-004"
-    LLM_MODEL: str = "models/gemini-2.5-pro"  # Switched to Pro for separate quota
+    
+    # RAG Settings
     CHUNK_SIZE: int = 1024
     CHUNK_OVERLAP: int = 200
     TOP_K: int = 8
     
+    # Upload
+    UPLOAD_DIR: str = "uploads"
+    
     # CORS
-    CORS_ORIGINS: list = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000"
-    ]
+    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
     
     class Config:
         env_file = ".env"
-        case_sensitive = True
+        extra = "allow"
 
 @lru_cache()
-def get_settings():
+def get_settings() -> Settings:
     return Settings()
 
 settings = get_settings()
-Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)

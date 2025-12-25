@@ -45,6 +45,10 @@ export const useDocuments = () => {
       throw error;
     }
   }, []);
+  // Add state for DWG converter modal
+const [showDWGConverter, setShowDWGConverter] = useState(false);
+const [failedDWGFile, setFailedDWGFile] = useState(null);
+  
 
   const deleteDocument = useCallback(async (docId) => {
     try {

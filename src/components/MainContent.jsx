@@ -1,141 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useConversations } from '../context/ConversationContext';
+import { useChat } from '../hooks/useChat';
 import WelcomeScreen from './WelcomeScreen';
 import ChatArea from './ChatArea';
 import ChatInput from './ChatInput';
 import DocumentBadge from './DocumentBadge';
-import { sendMessage, updateConversationDocuments } from '../services/api';
-import { useConversations } from '../context/ConversationContext';
 
-const MainContent = ({ 
-  documents,
-  currentConversation,
-  setShowMindMap,
-  setCurrentMermaid 
-}) => {
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversationDocuments, setConversationDocuments] = useState([]);
-  const { loadConversations } = useConversations();
+export default function MainContent({ documents, currentConversation, onViewMindMap }) {
+  const { updateConversationDocuments } = useConversations();
+  const [activeDocuments, setActiveDocuments] = useState([]);
 
-  // Load messages and documents when conversation changes
+  const conversationId = currentConversation?.id;
+  const documentIds = currentConversation?.documentIds || [];
+
+  const { messages, setMessages, isLoading, sendMessage, sendAdvancedAnalysis } = useChat(
+    conversationId,
+    documentIds
+  );
+
+  // Load messages when conversation changes
   useEffect(() => {
-    if (currentConversation) {
-      setMessages(currentConversation.messages || []);
-      
-      // Load conversation documents from all documents list
-      const convDocs = documents.filter(doc => 
-        currentConversation.document_ids?.includes(doc.id)
-      );
-      setConversationDocuments(convDocs);
+    if (currentConversation?.messages) {
+      setMessages(currentConversation.messages);
     } else {
       setMessages([]);
-      setConversationDocuments([]);
     }
-  }, [currentConversation, documents]);
+  }, [currentConversation, setMessages]);
 
-  const handleRemoveDocument = async (docId) => {
-    if (!currentConversation) return;
-    
-    const newDocIds = currentConversation.document_ids.filter(id => id !== docId);
-    await updateConversationDocuments(currentConversation.id, newDocIds);
-    await loadConversations();
-  };
-
-  const handleSendMessage = async (content) => {
-    if (!content.trim() || !currentConversation) return;
-    
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content,
-      timestamp: new Date().toLocaleTimeString()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    
-    try {
-      const documentIds = currentConversation.document_ids || [];
-      
-      const response = await sendMessage(
-        currentConversation.id,
-        content,
-        documentIds
-      );
-      
-      const aiResponse = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: response.response || 'No response received',
-        timestamp: new Date(response.timestamp).toLocaleTimeString(),
-        hasMindMap: response.has_mindmap,
-        mermaidCode: response.mermaid_code,
-        sources: response.sources
-      };
-      
-      setMessages(prev => [...prev, aiResponse]);
-      await loadConversations();
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: `Error: ${error.response?.data?.detail || error.message || 'Failed to get response from server'}`,
-        timestamp: new Date().toLocaleTimeString(),
-        isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+  // Update active documents when conversation or documents change
+  useEffect(() => {
+    if (documentIds && documentIds.length > 0 && documents && documents.length > 0) {
+      const active = documents.filter(doc => documentIds.includes(doc.id));
+      setActiveDocuments(active);
+    } else {
+      setActiveDocuments([]);
     }
-  };
+  }, [documentIds, documents]);
 
-  const handleViewMindMap = (mermaidCode) => {
-    setCurrentMermaid(mermaidCode);
-    setShowMindMap(true);
-  };
+  // Check if any active documents are CAD files
+  const hasCADDocuments = activeDocuments.some(doc => 
+    doc.name?.toLowerCase().endsWith('.dxf') || 
+    doc.name?.toLowerCase().endsWith('.dwg')
+  );
 
   if (!currentConversation) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-light-textSecondary dark:text-dark-textSecondary">
-            Loading...
-          </p>
-        </div>
-      </div>
-    );
+    return <WelcomeScreen />;
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Document Badge */}
-      {conversationDocuments.length > 0 && (
-        <DocumentBadge 
-          documents={conversationDocuments}
-          onRemove={handleRemoveDocument}
-        />
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      {activeDocuments.length > 0 && (
+        <DocumentBadge documents={activeDocuments} />
       )}
-
-      {messages.length === 0 ? (
-        <WelcomeScreen documents={conversationDocuments} />
-      ) : (
-        <ChatArea 
-          messages={messages}
-          isLoading={isLoading}
-          onViewMindMap={handleViewMindMap}
-        />
-      )}
-
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        disabled={conversationDocuments.length === 0}
+      
+      <ChatArea 
+        messages={messages}
         isLoading={isLoading}
+        onViewMindMap={onViewMindMap}
+      />
+      
+      <ChatInput 
+        onSendMessage={sendMessage}
+        onAdvancedAnalysis={sendAdvancedAnalysis}
+        disabled={isLoading}
+        hasCADDocuments={hasCADDocuments}
       />
     </div>
   );
-};
-
-export default MainContent;
+}
