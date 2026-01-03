@@ -53,7 +53,7 @@ export default function MainContent({ documents, currentConversation, onViewMind
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-visible">
       {activeDocuments.length > 0 && (
         <DocumentBadge documents={activeDocuments} />
       )}

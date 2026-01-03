@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, Trash2, Box } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
   // Remove duplicates based on ID
@@ -11,18 +12,22 @@ const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
   }, []);
 
   const [deleting, setDeleting] = React.useState(null);
+  const [confirmDoc, setConfirmDoc] = React.useState(null);
 
-  const handleDelete = async (docId) => {
-    if (!confirm('Are you sure you want to delete this document? It will be removed from the vector database and all conversations.')) {
-      return;
-    }
-    
+  const handleDelete = (docId) => {
+    setConfirmDoc(docId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDoc) return;
+    const docId = confirmDoc;
     setDeleting(docId);
+    setConfirmDoc(null);
     try {
       await onDeleteDocument(docId);
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete document: ' + error.message);
+      alert('Failed to delete document: ' + (error?.message || error));
     } finally {
       setDeleting(null);
     }
@@ -109,6 +114,16 @@ const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
           ))}
         </div>
       )}
+      <ConfirmModal
+        open={!!confirmDoc}
+        title="Delete document"
+        message="Are you sure you want to delete this document? It will be removed from the vector database and all conversations."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        loading={!!deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDoc(null)}
+      />
     </div>
   );
 };

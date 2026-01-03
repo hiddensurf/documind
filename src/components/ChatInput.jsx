@@ -155,7 +155,7 @@ export default function ChatInput({
   const showModeSelector = true;
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+    <form onSubmit={handleSubmit} className="border-t border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg p-4 shadow-soft rounded-t-lg">
       <div className="max-w-4xl mx-auto">
         {showModeSelector && (
           <div className="mb-3 flex items-center gap-2 flex-wrap">
@@ -163,7 +163,7 @@ export default function ChatInput({
               <button
                 type="button"
                 onClick={() => setShowModeMenu(!showModeMenu)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-soft hover:shadow-elevated ${
                   analysisMode !== 'normal'
                     ? `${config.buttonBg} ${config.buttonText} border-2 ${config.buttonBorder}`
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400'
@@ -175,7 +175,7 @@ export default function ChatInput({
               </button>
 
               {showModeMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-[9999] overflow-hidden">
+                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-[9999] overflow-visible">
                   <div className="p-1">
                     <button
                       type="button"
@@ -337,7 +337,7 @@ export default function ChatInput({
           <button
             type="submit"
             disabled={disabled || !message.trim()}
-            className={`px-5 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg hover:shadow-xl bg-gradient-to-r ${config.gradient} ${config.hoverGradient} text-white min-w-[100px] justify-center`}
+            className={`px-5 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-soft hover:shadow-elevated bg-gradient-to-r ${config.gradient} ${config.hoverGradient} text-white min-w-[100px] justify-center`}
           >
             <Icon className="w-5 h-5" />
             <span className="hidden sm:inline">

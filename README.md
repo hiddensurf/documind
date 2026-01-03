@@ -193,7 +193,7 @@ MODELS = {
 }
 ```
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### OpenRouter 401 Error
 - Verify API key in `.env`

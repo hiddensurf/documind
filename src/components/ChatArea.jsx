@@ -29,10 +29,10 @@ const ChatArea = ({ messages, isLoading, onViewMindMap }) => {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
               <Loader2 className="w-5 h-5 text-white animate-spin" />
             </div>
-            <div className="flex-1 bg-light-sidebar dark:bg-dark-sidebar rounded-2xl p-4 border border-light-border dark:border-dark-border">
-              <div className="flex items-center gap-2 text-light-textSecondary dark:text-dark-textSecondary">
-                <span>Thinking</span>
-                <span className="animate-pulse">...</span>
+            <div className="flex-1">
+              <div className="prose prose-sm dark:prose-invert max-w-none px-0 py-0 text-gray-800 dark:text-gray-100">
+                <span className="leading-relaxed">Thinking</span>
+                <span className="typing-cursor text-gray-800 dark:text-gray-100" aria-hidden="true" />
               </div>
             </div>
           </div>

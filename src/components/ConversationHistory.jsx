@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MessageSquare, Trash2, Edit2, Check, X, Plus } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 import { useConversations } from '../context/ConversationContext';
 
 const ConversationHistory = ({ onNewChat }) => {
@@ -13,6 +14,7 @@ const ConversationHistory = ({ onNewChat }) => {
   
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
+  const [confirmConv, setConfirmConv] = useState(null);
 
   const handleStartEdit = (conv) => {
     setEditingId(conv.id);
@@ -31,11 +33,16 @@ const ConversationHistory = ({ onNewChat }) => {
     setEditTitle('');
   };
 
-  const handleDelete = async (e, convId) => {
+  const handleDelete = (e, convId) => {
     e.stopPropagation();
-    if (confirm('Delete this conversation?')) {
-      await deleteConversation(convId);
-    }
+    setConfirmConv(convId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmConv) return;
+    const id = confirmConv;
+    setConfirmConv(null);
+    await deleteConversation(id);
   };
 
   const formatDate = (isoString) => {
@@ -155,6 +162,16 @@ const ConversationHistory = ({ onNewChat }) => {
           ))}
         </div>
       )}
+      <ConfirmModal
+        open={!!confirmConv}
+        title="Delete conversation"
+        message="Are you sure you want to delete this conversation? This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        loading={false}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmConv(null)}
+      />
     </div>
   );
 };

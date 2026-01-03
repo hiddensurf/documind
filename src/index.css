@@ -51,6 +51,60 @@ body {
   transition-duration: 200ms;
 }
 
+/* Global design tokens for non-tailwind fallbacks */
+:root {
+  --radius: 12px;
+  --card-bg: #ffffff;
+  --card-bg-dark: #1f2937;
+  --muted: #6b7280;
+  --accent: #06b6d4;
+  --gap-sm: 0.5rem;
+  --gap-md: 1rem;
+}
+
+/* Card utility for consistent panels */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+  padding: 1rem;
+}
+
+.dark .card {
+  background: var(--card-bg-dark);
+}
+
+/* Refined scrollbar for long lists */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(100,100,100,0.5);
+  border-radius: 4px;
+}
+
+/* Button micro-utilities */
+.btn-soft {
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+}
+
+/* Typing cursor animation */
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+.typing-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 1.05em;
+  margin-left: 6px;
+  background: currentColor;
+  border-radius: 2px;
+  animation: blink 1s steps(2, start) infinite;
+}
+
 /* Mermaid diagram styling */
 .mermaid {
   display: flex;
