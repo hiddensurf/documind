@@ -101,7 +101,7 @@ export const sendMessage = async (conversationId, query, documentIds = []) => {
     query,
     document_ids: documentIds,
   });
-  
+  console.log('API: Raw response:', response.data);
   const transformed = transformResponse(response.data);
   console.log('API: Transformed response:', transformed);
   return transformed;
@@ -115,7 +115,7 @@ export const generateMindMap = async (conversationId, query, documentIds = []) =
     query,
     document_ids: documentIds,
   });
-  
+  console.log('API: Raw response:', response.data);
   const transformed = transformResponse(response.data);
   console.log('API: Mind map response:', transformed);
   return transformed;
@@ -135,7 +135,7 @@ export const runAdvancedAnalysis = async (conversationId, query, documentIds = [
   }
   
   const response = await api.post(`/conversations/${conversationId}/advanced-analysis`, payload);
-  
+  console.log('API: Raw response:', response.data);
   const transformed = transformResponse(response.data);
   console.log('API: Advanced analysis response:', transformed);
   return transformed;
@@ -149,7 +149,7 @@ export const runVisionQuery = async (conversationId, query, documentIds = []) =>
   };
   
   const response = await api.post(`/conversations/${conversationId}/vision-query`, payload);
-  
+  console.log('API: Raw response:', response.data);
   const transformed = transformResponse(response.data);
   console.log('API: Vision query response:', transformed);
   return transformed;
@@ -167,7 +167,7 @@ export const runHybridAnalysis = async (conversationId, query, documentIds = [],
   }
   
   const response = await api.post(`/conversations/${conversationId}/hybrid-analysis`, payload);
-  
+  console.log('API: Raw response:', response.data);
   const transformed = transformResponse(response.data);
   console.log('API: Hybrid analysis response:', transformed);
   return transformed;

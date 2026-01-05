@@ -178,10 +178,18 @@ class RAGService:
             
             should_mindmap = return_mindmap or self._should_generate_mindmap(query_text)
             
-            # Build query engine - simplified without filtering
+            # Build query engine, applying optional doc_id filtering to Pinecone
+            vector_store_query_kwargs = None
+            if doc_ids:
+                # Pinecone filter: doc_id in provided list
+                vector_store_query_kwargs = {
+                    "filter": {"doc_id": {"$in": doc_ids}}
+                }
+
             query_engine = index.as_query_engine(
                 similarity_top_k=self.settings.TOP_K,
-                response_mode="tree_summarize"
+                response_mode="tree_summarize",
+                vector_store_query_kwargs=vector_store_query_kwargs
             )
             
             logger.info(f"Query engine created with TOP_K={self.settings.TOP_K}")
@@ -301,12 +309,58 @@ IMPORTANT: Base your answer ONLY on the document data provided. Be concise and s
         """Delete document from vector store"""
         try:
             logger.info(f"Deleting document from Pinecone: {doc_id}")
-            
-            # Delete all vectors with this doc_id
-            self.pinecone_index.delete(filter={"doc_id": doc_id})
-            
-            logger.info(f"Successfully deleted document: {doc_id}")
-            return True
+
+            # First attempt: use Pinecone filter delete (may fail on some client versions)
+            try:
+                self.pinecone_index.delete(filter={"doc_id": doc_id})
+                logger.info(f"Successfully deleted document using filter: {doc_id}")
+                return True
+            except Exception as e:
+                logger.warning(f"Pinecone filter delete failed: {e}. Falling back to id-based deletion.")
+
+            # Fallback: query for vector ids that have this doc_id metadata, then delete by ids
+            # Use a zero-vector as a harmless query vector; the filter will limit results to the doc_id
+            try:
+                dimension = 768
+                zero_vector = [0.0] * dimension
+                top_k = 1000
+                results = self.pinecone_index.query(
+                    vector=zero_vector,
+                    top_k=top_k,
+                    filter={"doc_id": doc_id},
+                    include_values=False,
+                    include_metadata=False
+                )
+
+                # Extract ids from results (supports different response shapes)
+                ids = []
+                matches = []
+                if hasattr(results, 'matches'):
+                    matches = results.matches
+                elif isinstance(results, dict) and 'matches' in results:
+                    matches = results['matches']
+
+                for m in matches:
+                    if hasattr(m, 'id'):
+                        ids.append(m.id)
+                    elif isinstance(m, dict) and 'id' in m:
+                        ids.append(m['id'])
+
+                if not ids:
+                    logger.info(f"No vectors found for doc_id {doc_id}; nothing to delete.")
+                    return True
+
+                # Delete in batches
+                batch_size = 100
+                for i in range(0, len(ids), batch_size):
+                    batch = ids[i:i+batch_size]
+                    self.pinecone_index.delete(ids=batch)
+
+                logger.info(f"Deleted {len(ids)} vectors for document {doc_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Fallback id-based deletion failed: {e}")
+                return False
         except Exception as e:
             logger.error(f"Error deleting document from vector store: {str(e)}")
             return False

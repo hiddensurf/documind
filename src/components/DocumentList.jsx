@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, Trash2, Box } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
   // Remove duplicates based on ID
@@ -11,21 +12,54 @@ const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
   }, []);
 
   const [deleting, setDeleting] = React.useState(null);
+  const [pendingDelete, setPendingDelete] = React.useState(null);
+  const [hiddenIds, setHiddenIds] = React.useState([]); // optimistic hide
+  const timersRef = React.useRef({});
+  const [toast, setToast] = React.useState(null);
 
-  const handleDelete = async (docId) => {
-    if (!confirm('Are you sure you want to delete this document? It will be removed from the vector database and all conversations.')) {
-      return;
+  const handleDelete = (docId) => {
+    setPendingDelete(docId);
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    const docId = pendingDelete;
+    setPendingDelete(null);
+    // optimistic hide
+    setHiddenIds(prev => [...prev, docId]);
+    setToast({ id: docId, message: 'Document deleted', undoLabel: 'Undo' });
+
+    // start delayed delete to allow undo
+    const timer = setTimeout(async () => {
+      setDeleting(docId);
+      try {
+        await onDeleteDocument(docId);
+      } catch (error) {
+        console.error('Delete failed:', error);
+        // restore on failure
+        setHiddenIds(prev => prev.filter(id => id !== docId));
+        setToast({ id: null, message: 'Failed to delete document', undoLabel: null });
+      } finally {
+        setDeleting(null);
+        // clear toast after brief moment
+        setTimeout(() => setToast(null), 2000);
+        delete timersRef.current[docId];
+      }
+    }, 6000); // 6s undo window
+
+    timersRef.current[docId] = timer;
+  };
+
+  const cancelDelete = () => setPendingDelete(null);
+
+  const undoDelete = (docId) => {
+    const timer = timersRef.current[docId];
+    if (timer) {
+      clearTimeout(timer);
+      delete timersRef.current[docId];
     }
-    
-    setDeleting(docId);
-    try {
-      await onDeleteDocument(docId);
-    } catch (error) {
-      console.error('Delete failed:', error);
-      alert('Failed to delete document: ' + error.message);
-    } finally {
-      setDeleting(null);
-    }
+    setHiddenIds(prev => prev.filter(id => id !== docId));
+    setToast(null);
   };
 
   const isCADFile = (filename) => {
@@ -48,6 +82,7 @@ const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
       ) : (
         <div className="space-y-2">
           {uniqueDocuments.map(doc => (
+            !hiddenIds.includes(doc.id) && (
             <div
               key={doc.id}
               onClick={() => handleDocumentClick(doc)}
@@ -106,7 +141,31 @@ const DocumentList = ({ documents, onDeleteDocument, onViewCAD }) => {
                 </button>
               </div>
             </div>
+            )
           ))}
+        </div>
+      )}
+
+      {/* Confirm modal and Undo toast */}
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="Delete Document"
+        description="This will remove the document from the vector DB and conversations. You can undo within a few seconds."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        isProcessing={!!deleting}
+      />
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-60">
+          <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+            <div className="text-sm">{toast.message}</div>
+            {toast.undoLabel && (
+              <button onClick={() => undoDelete(toast.id)} className="text-sm text-purple-600 hover:underline">{toast.undoLabel}</button>
+            )}
+          </div>
         </div>
       )}
     </div>

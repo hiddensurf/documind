@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MessageSquare, Trash2, Edit2, Check, X, Plus } from 'lucide-react';
 import { useConversations } from '../context/ConversationContext';
+import ConfirmModal from './ConfirmModal';
 
 const ConversationHistory = ({ onNewChat }) => {
   const { 
@@ -33,10 +34,19 @@ const ConversationHistory = ({ onNewChat }) => {
 
   const handleDelete = async (e, convId) => {
     e.stopPropagation();
-    if (confirm('Delete this conversation?')) {
-      await deleteConversation(convId);
-    }
+    // open modal instead of native confirm
+    setPendingDelete(convId);
   };
+
+  const [pendingDelete, setPendingDelete] = useState(null);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    await deleteConversation(pendingDelete);
+    setPendingDelete(null);
+  };
+
+  const cancelDelete = () => setPendingDelete(null);
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);
@@ -155,6 +165,17 @@ const ConversationHistory = ({ onNewChat }) => {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="Delete Conversation"
+        description="This will permanently delete the conversation and its messages. Are you sure?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        isProcessing={false}
+      />
     </div>
   );
 };

@@ -32,6 +32,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(router, prefix="/api")
+# Also include the same router at the root to support frontends calling endpoints without the /api prefix
+app.include_router(router)
 
 @app.get("/")
 async def root():

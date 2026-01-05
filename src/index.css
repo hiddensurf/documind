@@ -102,3 +102,40 @@ body {
   stroke: #c084fc !important;
   stroke-width: 2px !important;
 }
+
+/* Design tokens and utilities */
+:root {
+  --color-primary: 99 102 241; /* indigo-500 */
+  --color-accent: 139 92 246; /* purple-600 */
+  --bg-card: 255 255 255;
+  --bg-card-dark: 17 24 39;
+}
+
+.card {
+  background-color: rgb(var(--bg-card));
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+}
+
+.dark .card {
+  background-color: rgb(var(--bg-card-dark));
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+}
+
+@keyframes blink {
+  0% { opacity: 1 }
+  50% { opacity: 0 }
+  100% { opacity: 1 }
+}
+
+.typing-cursor::after {
+  content: '|';
+  margin-left: 6px;
+  display: inline-block;
+  animation: blink 1s steps(1) infinite;
+  color: rgba(var(--color-primary)/1);
+}
+
+/* small helpers */
+.overflow-visible { overflow: visible !important }
+

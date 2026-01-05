@@ -155,8 +155,8 @@ export default function ChatInput({
   const showModeSelector = true;
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-      <div className="max-w-4xl mx-auto">
+    <form onSubmit={handleSubmit} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 overflow-visible">
+      <div className="max-w-4xl mx-auto overflow-visible">
         {showModeSelector && (
           <div className="mb-3 flex items-center gap-2 flex-wrap">
             <div className="relative" ref={modeMenuRef}>
@@ -175,7 +175,7 @@ export default function ChatInput({
               </button>
 
               {showModeMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-[9999] overflow-hidden">
+                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-50 overflow-visible">
                   <div className="p-1">
                     <button
                       type="button"
@@ -250,7 +250,7 @@ export default function ChatInput({
                 </button>
 
                 {showModelPicker && (
-                  <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-[9999] max-h-96 overflow-y-auto">
+                  <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto overflow-visible">
                     <div className="p-2">
                       <button
                         type="button"
