@@ -92,3 +92,7 @@ Open http://localhost:5173. The backend OpenAPI docs are available at http://loc
 - DWG conversion depends on a compatible local converter. DXF handling is implemented directly with `ezdxf`.
 - Uploaded data, CAD artifacts, and conversation files are stored in local project directories.
 - Model availability and quotas depend on the configured providers and keys.
+
+## Portfolio context
+
+This is a collaborative document-assistant project. Its repository describes the overall system; it should not be read as a claim that I built every component alone.
